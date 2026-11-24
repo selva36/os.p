@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Real-Time CPU Scheduling Simulator | CS25C11</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════ HEADER ═══════════════════════════════ -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">⚙️</span>
+        <div>
+          <h1>CPU Scheduling Simulator</h1>
+          <p class="subtitle">Subject: Operating Systems &nbsp;|&nbsp; Code: CS25C11</p>
+        </div>
+      </div>
+    </div>
+    <div class="header-right">
+      <button id="themeToggle" class="btn btn-icon" title="Toggle Dark/Light Mode">🌙</button>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════ MAIN ════════════════════════════════ -->
+  <main class="app-main">
+
+    <!-- ───────────── LEFT PANEL: Input & Config ───────────── -->
+    <section class="panel panel-left">
+
+      <!-- Process Input Form -->
+      <div class="card">
+        <h2 class="card-title">➕ Add Process</h2>
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="pid">Process ID</label>
+            <input type="text" id="pid" placeholder="e.g. P1" maxlength="6" />
+          </div>
+          <div class="form-group">
+            <label for="arrivalTime">Arrival Time</label>
+            <input type="number" id="arrivalTime" placeholder="0" min="0" max="99" />
+          </div>
+          <div class="form-group">
+            <label for="burstTime">Burst Time</label>
+            <input type="number" id="burstTime" placeholder="1" min="1" max="99" />
+          </div>
+          <div class="form-group">
+            <label for="priority">Priority <span class="hint">(lower = higher)</span></label>
+            <input type="number" id="priority" placeholder="1" min="1" max="99" />
+          </div>
+        </div>
+        <div id="formError" class="error-msg" role="alert"></div>
+        <div class="form-actions">
+          <button id="addProcessBtn" class="btn btn-primary">➕ Add Process</button>
+          <button id="randomBtn" class="btn btn-secondary">🎲 Random Processes</button>
+          <button id="clearAllBtn" class="btn btn-danger">🗑️ Clear All</button>
+        </div>
+      </div>
+
+      <!-- Process Table -->
+      <div class="card">
+        <h2 class="card-title">📋 Process Queue</h2>
+        <div class="table-wrapper">
+          <table id="processTable" class="data-table">
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Arrival</th>
+                <th>Burst</th>
+                <th>Priority</th>
+                <th>State</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="processTableBody">
+              <tr id="emptyRow">
+                <td colspan="6" class="empty-msg">No processes added yet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Algorithm Config -->
+      <div class="card">
+        <h2 class="card-title">⚙️ Scheduler Configuration</h2>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="algorithm">Scheduling Algorithm</label>
+            <select id="algorithm">
+              <option value="FCFS">FCFS – First Come First Served</option>
+              <option value="SJF">SJF – Shortest Job First (Non-Preemptive)</option>
+              <option value="SRTF">SRTF – Shortest Remaining Time First (Preemptive)</option>
+              <option value="PRIORITY">Priority Scheduling (Non-Preemptive)</option>
+              <option value="RR">Round Robin (Time Quantum)</option>
+            </select>
+          </div>
+          <div class="form-group" id="quantumGroup" style="display:none;">
+            <label for="quantum">Time Quantum</label>
+            <input type="number" id="quantum" value="2" min="1" max="20" />
+          </div>
+          <div class="form-group full-width">
+            <label for="speed">Animation Speed</label>
+            <div class="slider-row">
+              <span>Slow</span>
+              <input type="range" id="speed" min="1" max="10" value="5" />
+              <span>Fast</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Simulation Controls -->
+      <div class="card">
+        <h2 class="card-title">▶️ Simulation Controls</h2>
+        <div class="control-buttons">
+          <button id="startBtn" class="btn btn-success">▶ Start</button>
+          <button id="pauseBtn" class="btn btn-warning" disabled>⏸ Pause</button>
+          <button id="resumeBtn" class="btn btn-info" disabled>⏯ Resume</button>
+          <button id="resetBtn" class="btn btn-danger" disabled>↺ Reset</button>
+        </div>
+        <div id="simError" class="error-msg" role="alert"></div>
+      </div>
+
+    </section>
+
+    <!-- ───────────── RIGHT PANEL: Visualization ───────────── -->
+    <section class="panel panel-right">
+
+      <!-- CPU + Ready Queue Status -->
+      <div class="card">
+        <h2 class="card-title">🖥️ Real-Time CPU Status</h2>
+        <div class="cpu-status-row">
+
+          <!-- CPU Box -->
+          <div class="cpu-box">
+            <div class="cpu-label">CPU</div>
+            <div id="cpuProcess" class="cpu-process idle">IDLE</div>
+            <div id="cpuTimer" class="cpu-timer">t = 0</div>
+          </div>
+
+          <!-- Arrow -->
+          <div class="flow-arrow">←</div>
+
+          <!-- Ready Queue -->
+          <div class="ready-queue-box">
+            <div class="rq-label">Ready Queue</div>
+            <div id="readyQueue" class="ready-queue-items">
+              <span class="rq-empty">Empty</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Gantt Chart -->
+      <div class="card">
+        <h2 class="card-title">📊 Animated Gantt Chart</h2>
+        <div class="gantt-container" id="ganttContainer">
+          <div id="ganttChart" class="gantt-chart"></div>
+          <div id="ganttTimeline" class="gantt-timeline"></div>
+        </div>
+        <div id="ganttEmpty" class="empty-msg">Start the simulation to see the Gantt chart.</div>
+      </div>
+
+      <!-- Process State Legend -->
+      <div class="card">
+        <h2 class="card-title">🏷️ Process State Legend</h2>
+        <div class="legend-row">
+          <span class="state-badge state-new">New</span>
+          <span class="state-badge state-ready">Ready</span>
+          <span class="state-badge state-running">Running</span>
+          <span class="state-badge state-waiting">Waiting</span>
+          <span class="state-badge state-terminated">Terminated</span>
+        </div>
+      </div>
+
+      <!-- Results Table -->
+      <div class="card" id="resultsCard" style="display:none;">
+        <h2 class="card-title">📈 Results &amp; Metrics</h2>
+        <div class="table-wrapper">
+          <table class="data-table" id="resultsTable">
+            <thead>
+              <tr>
+                <th>PID</th>
+                <th>Arrival</th>
+                <th>Burst</th>
+                <th>Priority</th>
+                <th>Completion</th>
+                <th>Turnaround</th>
+                <th>Waiting</th>
+                <th>Response</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+        <div id="averages" class="averages-row"></div>
+      </div>
+
+      <!-- Compare All Algorithms -->
+      <div class="card">
+        <h2 class="card-title">🔬 Compare All Algorithms</h2>
+        <button id="compareBtn" class="btn btn-primary">📊 Compare All</button>
+        <div id="compareResult" class="compare-result" style="display:none;">
+          <canvas id="compareChart" height="260"></canvas>
+          <div id="recommendation" class="recommendation-box"></div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ═══════════════════════════════ FOOTER ══════════════════════════════ -->
+  <footer class="app-footer">
+    <p>CS25C11 – Operating Systems &nbsp;|&nbsp; Real-Time CPU Scheduling Simulator &nbsp;|&nbsp; Pure HTML · CSS · JS</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
